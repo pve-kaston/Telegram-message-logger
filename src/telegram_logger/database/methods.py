@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from telethon.events import MessageDeleted, MessageEdited
 from telethon.tl.types import UpdateReadMessagesContents
 
-from telegram_logger.database import DbMessage, async_session
+from telegram_logger.database.models import DbMessage, async_session
 from telegram_logger.settings import get_settings
 from telegram_logger.tg_types import ChatType
 
@@ -82,6 +82,7 @@ async def get_message_ids_by_event(
                 DbMessage.id,
                 DbMessage.from_id,
                 DbMessage.chat_id,
+                DbMessage.type,
                 DbMessage.msg_text,
                 DbMessage.media,
                 DbMessage.noforwards,

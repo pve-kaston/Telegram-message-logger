@@ -10,7 +10,10 @@ from telethon.errors import FileMigrateError, FileReferenceExpiredError
 from telethon.hints import Entity
 from telethon.tl import types
 
+from telegram_logger.tg_types import ChatType
+
 logger = logging.getLogger(__name__)
+KNOWN_CHAT_TYPES = {chat_type.value for chat_type in ChatType}
 
 
 def _escape_md_label(text: str) -> str:
@@ -175,6 +178,21 @@ async def _send_deleted_file(
     )
 
 
+def _should_save_deleted_message(row, settings) -> bool:
+    chat_type = (
+        ChatType(row.type) if row.type in KNOWN_CHAT_TYPES else ChatType.UNKNOWN
+    )
+
+    if chat_type in (ChatType.USER, ChatType.BOT):
+        return settings.save_deleted_from_private_chats
+    if chat_type == ChatType.GROUP:
+        return settings.save_deleted_from_groups
+    if chat_type == ChatType.CHANNEL:
+        return settings.save_deleted_from_channels
+
+    return True
+
+
 async def edited_deleted_handler(
     event, client, db, buffer_storage, deleted_storage, settings, my_id
 ):
@@ -236,6 +254,15 @@ async def edited_deleted_handler(
             and not row.self_destructing
         ):
             logger.debug("Skipping non-self-destruct row id=%s for TTL event", row.id)
+            continue
+
+        if not _should_save_deleted_message(row, settings):
+            logger.debug(
+                "Skipping deleted message id=%s chat_id=%s type=%s due to save flags",
+                row.id,
+                row.chat_id,
+                row.type,
+            )
             continue
 
         mention_sender = await _create_mention(client, row.from_id)
