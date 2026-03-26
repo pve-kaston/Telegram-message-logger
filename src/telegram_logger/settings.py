@@ -26,6 +26,10 @@ class Settings(BaseSettings):
 
     max_deleted_messages_per_event: int = 100
 
+    save_deleted_from_private_chats: bool = True
+    save_deleted_from_groups: bool = True
+    save_deleted_from_channels: bool = True
+
     save_edited_messages: bool = True
     delete_sent_gifs_from_saved: bool = True
     delete_sent_stickers_from_saved: bool = True
