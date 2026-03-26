@@ -47,7 +47,19 @@ class MessageRepository:
         event = _Event()
         event.chat_id = chat_id
         rows = await get_message_ids_by_event(event, list(ids))
-        return [row[0] if isinstance(row, tuple) else row for row in rows]
-
+        return [
+            MessageEventRow(
+                id=row[0],
+                from_id=row[1],
+                chat_id=row[2],
+                type=row[3],
+                msg_text=row[4],
+                media=row[5],
+                noforwards=row[6],
+                self_destructing=row[7],
+            )
+            for row in rows
+        ]
+        
     async def delete_expired_messages(self, current_time):
         await delete_expired_messages_from_db(current_time)
