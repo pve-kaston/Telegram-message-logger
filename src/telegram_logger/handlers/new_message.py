@@ -63,17 +63,18 @@ async def new_message_handler(
     chat_id = event.chat_id or 0
     from_id = _sender_id(event.message, my_id)
 
-    if from_id in settings.ignored_ids or chat_id in settings.ignored_ids:
-        logger.debug(
-            "Ignoring message id=%s from_id=%s chat_id=%s due to ignored_ids",
-            event.message.id,
-            from_id,
-            chat_id,
-        )
-        return
-
     if event.is_private and event.chat_id == my_id:
         logger.debug("Skipping self-chat message id=%s", event.message.id)
+        return
+
+    chat_type = await _chat_type(event)
+    if not settings.is_chat_allowed(chat_type, chat_id):
+        logger.debug(
+            "Ignoring message id=%s chat_id=%s type=%s due to category filter",
+            event.message.id,
+            chat_id,
+            chat_type.name.lower(),
+        )
         return
 
     noforwards = bool(
@@ -117,7 +118,7 @@ async def new_message_handler(
         id=event.message.id,
         from_id=from_id,
         chat_id=chat_id,
-        type=(await _chat_type(event)).value,
+        type=chat_type.value,
         msg_text=event.message.text,
         media=pickle.dumps(media) if media else None,
         noforwards=noforwards,

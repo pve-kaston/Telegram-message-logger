@@ -179,9 +179,7 @@ async def _send_deleted_file(
 
 
 def _should_save_deleted_message(row, settings) -> bool:
-    chat_type = (
-        ChatType(row.type) if row.type in KNOWN_CHAT_TYPES else ChatType.UNKNOWN
-    )
+    chat_type = _row_chat_type(row)
 
     if chat_type in (ChatType.USER, ChatType.BOT):
         return settings.save_deleted_from_private_chats
@@ -191,6 +189,14 @@ def _should_save_deleted_message(row, settings) -> bool:
         return settings.save_deleted_from_channels
 
     return True
+
+
+def _row_chat_type(row) -> ChatType:
+    return ChatType(row.type) if row.type in KNOWN_CHAT_TYPES else ChatType.UNKNOWN
+
+
+def _row_is_allowed(row, settings) -> bool:
+    return settings.is_chat_allowed(_row_chat_type(row), row.chat_id)
 
 
 async def edited_deleted_handler(
@@ -203,6 +209,13 @@ async def edited_deleted_handler(
         ids = [event.message.id]
         rows = await db.get_messages_by_event(event.chat_id, ids)
         for row in rows:
+            if not _row_is_allowed(row, settings):
+                logger.debug(
+                    "Skipping edited message id=%s chat_id=%s due to category filter",
+                    row.id,
+                    row.chat_id,
+                )
+                continue
             if row.media:
                 continue
             old_text = str(row.msg_text or "").strip()
@@ -243,9 +256,9 @@ async def edited_deleted_handler(
     rows = await db.get_messages_by_event(getattr(event, "chat_id", None), ids)
 
     for row in rows:
-        if row.from_id in settings.ignored_ids or row.chat_id in settings.ignored_ids:
+        if not _row_is_allowed(row, settings):
             logger.debug(
-                "Skipping row id=%s chat_id=%s due to ignored_ids", row.id, row.chat_id
+                "Skipping row id=%s chat_id=%s due to category filter", row.id, row.chat_id
             )
             continue
 

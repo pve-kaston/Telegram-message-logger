@@ -7,3 +7,8 @@ class ChatType(Enum):
     GROUP = 3
     BOT = 4
     UNKNOWN = 0
+
+
+class ChatFilterMode(str, Enum):
+    EXCLUDE = "exclude"
+    INCLUDE = "include"

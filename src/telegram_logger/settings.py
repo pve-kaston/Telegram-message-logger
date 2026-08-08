@@ -5,6 +5,8 @@ from pathlib import Path
 from pydantic import Field, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from telegram_logger.tg_types import ChatFilterMode, ChatType
+
 
 class Settings(BaseSettings):
     data_root: Path = Path(os.getenv("DATA_ROOT", Path.cwd() / "src/data"))
@@ -12,8 +14,18 @@ class Settings(BaseSettings):
     api_hash: SecretStr
 
     log_chat_id: int
-    ignored_ids: set[int] = Field(default_factory=set)
     listen_outgoing_messages: bool = True
+
+    user_filter_mode: ChatFilterMode = ChatFilterMode.EXCLUDE
+    user_filter_ids: set[int] = Field(default_factory=set)
+    bot_filter_mode: ChatFilterMode = ChatFilterMode.EXCLUDE
+    bot_filter_ids: set[int] = Field(default_factory=set)
+    group_filter_mode: ChatFilterMode = ChatFilterMode.EXCLUDE
+    group_filter_ids: set[int] = Field(default_factory=set)
+    channel_filter_mode: ChatFilterMode = ChatFilterMode.EXCLUDE
+    channel_filter_ids: set[int] = Field(default_factory=set)
+    unknown_filter_mode: ChatFilterMode = ChatFilterMode.EXCLUDE
+    unknown_filter_ids: set[int] = Field(default_factory=set)
 
     buffer_all_media: bool = True
     buffer_noforwards_content: bool = False
@@ -70,6 +82,19 @@ class Settings(BaseSettings):
 
     def build_sqlite_url(self) -> str:
         return f"sqlite+aiosqlite:///{self.sqlite_db_file}"
+
+    def is_chat_allowed(self, chat_type: ChatType, chat_id: int) -> bool:
+        mode, ids = {
+            ChatType.USER: (self.user_filter_mode, self.user_filter_ids),
+            ChatType.BOT: (self.bot_filter_mode, self.bot_filter_ids),
+            ChatType.GROUP: (self.group_filter_mode, self.group_filter_ids),
+            ChatType.CHANNEL: (self.channel_filter_mode, self.channel_filter_ids),
+            ChatType.UNKNOWN: (self.unknown_filter_mode, self.unknown_filter_ids),
+        }[chat_type]
+
+        if mode == ChatFilterMode.INCLUDE:
+            return chat_id in ids
+        return chat_id not in ids
 
 
 @lru_cache

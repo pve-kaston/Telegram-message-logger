@@ -42,7 +42,8 @@ Main scenarios:
 
 In Telegram, a **channel** and its **discussion group (comments chat)** are **two separate chats with different IDs**. A common case: the channel itself is useful, but comments (and bots inside them) generate a lot of noise/spam.
 
-If you want to disable logging of spam, add the **ID of the discussion chat**, not the channel ID, to `IGNORED_IDS`.
+If you want to disable logging of spam, use `GROUP_FILTER_MODE=exclude` and add
+the **ID of the discussion chat**, not the channel ID, to `GROUP_FILTER_IDS`.
 
 ### How to find a chat/channel ID
 
@@ -59,9 +60,40 @@ https://t.me/c/1234567890/1234
 
 If a `username` is used instead, e.g. `https://t.me/some_channel/1234`, that is a **username**, not an ID. To convert `username → numeric ID`, you can use the bot `@username_to_id_bot`.
 
-### Why use `IGNORED_IDS`
+### Filtering by chat category
 
-If certain channels/chats are not needed or create noise, add their IDs to `IGNORED_IDS`. Messages from them will **not be logged**, and your database and media buffer will not be cluttered.
+Each Telegram chat category has an independent mode and ID list:
+
+* `exclude` — log every chat in the category except IDs from `*_FILTER_IDS`;
+* `include` — log only IDs from `*_FILTER_IDS`.
+
+Available categories:
+
+* `USER` — private chats with people;
+* `BOT` — private chats with bots;
+* `GROUP` — groups, supergroups, and channel discussion chats;
+* `CHANNEL` — broadcast channels;
+* `UNKNOWN` — Telegram entities that could not be classified.
+
+A bot posting in a group is filtered as `GROUP`, because the filter applies to
+the chat, not the message sender.
+
+Example: log all private user chats, only selected channels, all groups except
+one, and no private bot chats:
+
+```env
+USER_FILTER_MODE=exclude
+USER_FILTER_IDS=[]
+
+CHANNEL_FILTER_MODE=include
+CHANNEL_FILTER_IDS=[-1001111111111, -1002222222222]
+
+GROUP_FILTER_MODE=exclude
+GROUP_FILTER_IDS=[-1003333333333]
+
+BOT_FILTER_MODE=include
+BOT_FILTER_IDS=[]
+```
 
 ---
 
@@ -157,8 +189,18 @@ LOG_CHAT_ID=-1001234567890
 ### Recommended
 
 ```env
-IGNORED_IDS=[-1002222222222222222222, -10033333333333333333333]
 LISTEN_OUTGOING_MESSAGES=true
+
+USER_FILTER_MODE=exclude
+USER_FILTER_IDS=[]
+BOT_FILTER_MODE=exclude
+BOT_FILTER_IDS=[]
+GROUP_FILTER_MODE=exclude
+GROUP_FILTER_IDS=[]
+CHANNEL_FILTER_MODE=exclude
+CHANNEL_FILTER_IDS=[]
+UNKNOWN_FILTER_MODE=exclude
+UNKNOWN_FILTER_IDS=[]
 
 # DATA_ROOT controls where sessions/db/media are stored.
 # Usually you DON'T need to set it.
